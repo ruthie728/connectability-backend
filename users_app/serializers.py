@@ -2,17 +2,20 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email']
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = UserProfile
         fields = ['user', 'disability_type', 'country', 'bio', 'profile_image']
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -27,6 +30,5 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password']
         )
-        # Automatically create a UserProfile with empty/default fields
-        UserProfile.objects.create(user=user, disability_type='', country='', bio='')
+        UserProfile.objects.create(user=user)
         return user
