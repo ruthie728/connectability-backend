@@ -1,57 +1,76 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
 from .models import Post, Comment
 from .serializers import PostSerializer, CommentSerializer
+from .permissions import IsOwnerOrReadOnly
+
 from users_app.models import UserProfile
 from follows_app.models import Follow
+from notifications_app.models import Notification
 
 
 # -------------------------
-# List & create posts
+# Posts
 # -------------------------
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['content']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         return Post.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
         user_profile = UserProfile.objects.get(user=self.request.user)
-        serializer.save(author=user_profile)
+        serializer.save(user=user_profile)
 
 
-# -------------------------
-# Retrieve, update, delete a single post
-# -------------------------
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
 
 # -------------------------
-# List & create comments for a post
+# Comments
 # -------------------------
 class CommentListCreateView(generics.ListCreateAPIView):
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        post_id = self.kwargs['post_id']
-        return Comment.objects.filter(post__id=post_id).order_by('-created_at')
+        return Comment.objects.filter(post_id=self.kwargs['post_id']).order_by('-created_at')
 
     def perform_create(self, serializer):
         post = get_object_or_404(Post, id=self.kwargs['post_id'])
         user_profile = UserProfile.objects.get(user=self.request.user)
-        serializer.save(author=user_profile, post=post)
+
+        comment = serializer.save(user=user_profile, post=post)
+
+        # 🔔 Comment notification (skip self)
+        if post.user != user_profile:
+            Notification.objects.create(
+                sender=user_profile,
+                receiver=post.user,
+                notif_type='comment',
+                post=post,
+                comment=comment
+            )
+
+
+class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
 
 # -------------------------
-# Toggle like for a post
+# Likes
 # -------------------------
 class LikeToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -67,6 +86,15 @@ class LikeToggleView(APIView):
             post.likes.add(user_profile)
             liked = True
 
+            # 🔔 Like notification (skip self)
+            if post.user != user_profile:
+                Notification.objects.create(
+                    sender=user_profile,
+                    receiver=post.user,
+                    notif_type='like',
+                    post=post
+                )
+
         return Response({
             'liked': liked,
             'likes_count': post.likes.count()
@@ -74,7 +102,7 @@ class LikeToggleView(APIView):
 
 
 # -------------------------
-# User Feed (posts from followed users + own posts)
+# Feed
 # -------------------------
 class FeedView(generics.ListAPIView):
     serializer_class = PostSerializer
@@ -82,11 +110,10 @@ class FeedView(generics.ListAPIView):
 
     def get_queryset(self):
         user_profile = UserProfile.objects.get(user=self.request.user)
-
-        following_profiles = Follow.objects.filter(
+        following_ids = Follow.objects.filter(
             follower=user_profile
         ).values_list('following', flat=True)
 
         return Post.objects.filter(
-            author__in=list(following_profiles) + [user_profile]
+            user__in=list(following_ids) + [user_profile]
         ).order_by('-created_at')
