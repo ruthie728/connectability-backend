@@ -1,40 +1,43 @@
-# ConnectAbility Backend API
+ConnectAbility Backend API
 
-ConnectAbility is a backend REST API for a social platform designed to connect people with disabilities, caregivers, and allies.  
-The platform supports user accounts, posts, comments, likes, follows, and notifications.
+ConnectAbility is a backend REST API for a social platform designed to connect people with disabilities, caregivers, and allies.
+The platform enables users to interact through posts, comments, likes, follows, and notifications.
 
-This project is built using **Django** and **Django Rest Framework (DRF)**.
+This project was built during the ALX Africa Backend Capstone phase using Django and Django Rest Framework (DRF).
 
----
+ Features
 
-##  Features
+User registration and authentication
 
-- User registration and authentication
-- User profiles
-- Create, list, and delete posts
-- Comment on posts
-- Like and unlike posts
-- Follow and unfollow users
-- User feed (posts from followed users)
-- Notifications for follows, likes, and comments
-- Token-based authentication
+User profiles
 
----
+Create and list posts
 
-## 🛠 Tech Stack
+Comment on posts
 
-- Python 3
-- Django
-- Django Rest Framework
-- SQLite (development)
-- Token Authentication
-- Render (deployment)
+Like and unlike posts
 
----
+Follow and unfollow users
 
-##  Project Structure
+User feed (posts from followed users)
 
-```text
+Notifications for follows, likes, and comments
+
+Token-based authentication
+
+ Tech Stack
+
+Python 3
+
+Django
+
+Django Rest Framework (DRF)
+
+SQLite (development database)
+
+Token Authentication
+
+ Project Structure
 connectability-backend/
 │
 ├── connectability/        # Main project settings
@@ -58,11 +61,11 @@ Authorization: Token YOUR_TOKEN_HERE
  API Endpoints Overview
 Users
 
-POST /api/users/register/ – Register user
+POST /api/users/register/ – Register a new user
 
 POST /api/users/login/ – Login user
 
-GET /api/users/profile/ – View profile
+GET /api/users/profile/ – View user profile
 
 Posts
 
@@ -108,37 +111,184 @@ pip install -r requirements.txt
 4 Apply Migrations
 python manage.py migrate
 
-5 Run Server
+5 Run the Server
 python manage.py runserver
 
-Testing (Using Curl Example)
+ Testing & Results (Manual Testing with curl)
 
-Create a post:
+The API was tested locally using Git Bash and curl commands.
 
-curl -X POST http://127.0.0.1:8000/api/posts/ \
--H "Authorization: Token YOUR_TOKEN" \
+1 User Registration — WORKED
+curl -X POST http://127.0.0.1:8000/api/users/register/ \
 -H "Content-Type: application/json" \
--d '{"content": "My first post"}'
+-d '{
+  "username": "testuser1",
+  "email": "testuser1@email.com",
+  "password": "StrongPassword123"
+}'
 
- Known Issues
+Expected Result
+{
+  "message": "User registered successfully"
+}
 
-Some endpoints may return HTML error pages during development when DEBUG=True.
+2 User Login — WORKED
+curl -X POST http://127.0.0.1:8000/api/users/login/ \
+-H "Content-Type: application/json" \
+-d '{
+  "username": "testuser1",
+  "password": "StrongPassword123"
+}'
 
-These issues are under active debugging and improvement.
+Expected Result
+{
+  "token": "abc123xyz456"
+}
+
+
+ Token is then used for authenticated requests.
+
+3 View User Profile — WORKED
+curl -X GET http://127.0.0.1:8000/api/users/profile/ \
+-H "Authorization: Token YOUR_TOKEN_HERE"
+
+Expected Result
+{
+  "username": "testuser1",
+  "email": "testuser1@email.com"
+}
+
+4 Follow / Unfollow User —  WORKED
+curl -X POST http://127.0.0.1:8000/api/follows/follow/2/ \
+-H "Authorization: Token YOUR_TOKEN_HERE"
+
+Expected Result
+{
+  "message": "You are now following this user"
+}
+
+
+Running the same command again:
+
+{
+  "message": "You have unfollowed this user"
+}
+
+5 View Notifications —  WORKED
+curl -X GET http://127.0.0.1:8000/api/notifications/ \
+-H "Authorization: Token YOUR_TOKEN_HERE"
+
+Expected Result
+[
+  {
+    "type": "follow",
+    "message": "testuser1 followed you",
+    "created_at": "2025-01-01T10:30:00Z"
+  }
+]
+
+6 List Posts — PARTIALLY WORKED
+curl -X GET http://127.0.0.1:8000/api/posts/ \
+-H "Authorization: Token YOUR_TOKEN_HERE"
+
+Issue Observed
+
+Sometimes returns JSON correctly
+
+Sometimes returns an HTML Django error page
+
+Example error:
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Server Error (500)</title>
+
+
+Cause: DEBUG=True and unresolved serializer/view mismatch.
+
+7 Create Post —  PARTIALLY WORKED
+curl -X POST http://127.0.0.1:8000/api/posts/ \
+-H "Authorization: Token YOUR_TOKEN_HERE" \
+-H "Content-Type: application/json" \
+-d '{
+  "content": "This is my first post"
+}'
+
+Issue Observed
+
+Request reaches the server
+
+Response sometimes returns HTML error instead of JSON
+
+8 Like / Unlike Post — NOT WORKING AS EXPECTED
+curl -X POST http://127.0.0.1:8000/api/posts/1/like/ \
+-H "Authorization: Token YOUR_TOKEN_HERE"
+
+Issue Observed
+
+Endpoint is reachable
+
+Returns HTML error page instead of JSON response
+
+9 Comment on Post —  NOT WORKING AS EXPECTED
+curl -X POST http://127.0.0.1:8000/api/posts/1/comments/ \
+-H "Authorization: Token YOUR_TOKEN_HERE" \
+-H "Content-Type: application/json" \
+-d '{
+  "content": "Nice post!"
+}'
+
+Issue Observed
+
+Server processes request
+
+HTML error page returned
+
+Indicates unresolved comment serializer/view logic
+
+Summary of Testing Results
+Fully Working
+
+User registration
+
+User login
+
+Token authentication
+
+Follow / unfollow users
+
+Notifications system
+
+ Partially Working
+
+List posts
+
+Create posts
+
+ Needs Fixing
+
+Likes
+
+Comments
+
+Consistent JSON error handling
 
  Future Improvements
 
-Improve error handling
+Fix remaining serializer and view inconsistencies
+
+Improve API error handling
 
 Add pagination
 
-Add image/video upload support
+Add image and video upload support
 
 Improve feed performance
 
-Frontend integration
+Integrate frontend application
 
- Author
+Author
 
 Ruth Atieno
 Backend Developer
